@@ -58,6 +58,7 @@ public class Broker {
 
         InetSocketAddress neighbor;
         if(direction == Direction.LEFT){
+
             neighbor=(InetSocketAddress) clients.getLeftNeighorOf(index);
         } else {
             neighbor=(InetSocketAddress) clients.getRightNeighorOf(index);
