@@ -9,33 +9,72 @@ import aqua.common.msgtypes.RegisterResponse;
 import messaging.Endpoint;
 import messaging.Message;
 
+import javax.swing.*;
 import java.net.InetSocketAddress;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Broker {
 
+    int THREADSNUM = 5;
     Endpoint endpoint = new Endpoint(4711);
     ClientCollection clients = new ClientCollection();
+    ExecutorService executor = Executors.newFixedThreadPool(THREADSNUM);
+    ReadWriteLock rw = new ReentrantReadWriteLock();
+    boolean stopRequest = false;
+
+
+
 
     public void broker(){
-        Boolean finish = false;
+        //TODO: not work yet
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                JOptionPane.showMessageDialog(null,"Press OK button to stop server");
+                stopRequest=true;
+            }
+        });
 
-        while(!finish){
+
+
+
+        while(!stopRequest){
             Message message = endpoint.blockingReceive();
-            if(message.getPayload() instanceof RegisterRequest){
-                register(message);
-            }
+            BrokerTask brokerTask = new BrokerTask();
+            executor.execute(() -> brokerTask.brokerTask(message));
 
-            if(message.getPayload() instanceof DeregisterRequest){
-                deregister(message);
-            }
+        }
 
-            if(message.getPayload() instanceof HandoffRequest){
-                HandoffRequest handoffRequest = (HandoffRequest) message.getPayload();
-                InetSocketAddress inetSocketAddress = message.getSender();
+        executor.shutdown();
+
+    }
+
+    private class BrokerTask {
+        public void brokerTask(Message msg){
+            if(msg.getPayload() instanceof RegisterRequest) {
+                //TODO::vielleicht synchronized ??
+                register(msg);
+            }
+            if(msg.getPayload() instanceof DeregisterRequest) {
+                //TODO::vielleicht synchronized ??
+                deregister(msg);
+            }
+            if(msg.getPayload() instanceof HandoffRequest) {
+                //TODO: use read write lock to handle the handoff request
+                HandoffRequest handoffRequest = (HandoffRequest) msg.getPayload();
+                InetSocketAddress inetSocketAddress = msg.getSender();
                 handoff(handoffRequest, inetSocketAddress);
             }
 
+            if(msg.getPayload() instanceof  PoisonPill) {
+                System.exit(0);
+            }
+
         }
+
 
     }
 
