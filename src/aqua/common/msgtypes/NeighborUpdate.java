@@ -5,28 +5,19 @@ import java.io.Serializable;
 import java.net.InetSocketAddress;
 
 public class NeighborUpdate implements Serializable {
-    private Direction direction;
-    private String neighbor;
+    private final InetSocketAddress neighbor;
+    private final Direction direction;
 
-    public NeighborUpdate(Direction direction, String neighbor) {
-        this.direction = direction;
+
+    public NeighborUpdate(InetSocketAddress neighbor, Direction direction) {
         this.neighbor = neighbor;
+
+        this.direction = direction;
     }
 
-    public Direction getDirection() {
-        return direction;
-    }
-
-    public String getNeighbor() {
+    public InetSocketAddress getNeighbor() {
         return neighbor;
     }
 
-    public void setDirection(Direction direction){
-        this.direction = direction;
-    }
-
-    public void setNeighbor(String neighbor){
-        this.neighbor=neighbor;
-    }
-
+    public  Direction getDirection() {return direction;}
 }

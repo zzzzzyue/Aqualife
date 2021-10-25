@@ -1,5 +1,6 @@
 package aqua.client;
 
+import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Observable;
@@ -21,10 +22,14 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected final Set<FishModel> fishies;
 	protected int fishCounter = 0;
 	protected final ClientCommunicator.ClientForwarder forwarder;
+	private InetSocketAddress leftNeighbor;
+	private InetSocketAddress rightNeighbor;
 
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
 		this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
 		this.forwarder = forwarder;
+		this.leftNeighbor = leftNeighbor;
+		this.rightNeighbor = rightNeighbor;
 	}
 
 	synchronized void onRegistration(String id) {
@@ -67,8 +72,9 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 			fish.update();
 
+			//TODO: handoff the fish direction.
 			if (fish.hitsEdge())
-				forwarder.handOff(fish);
+				forwarder.handOff(fish,leftNeighbor);
 
 			if (fish.disappears())
 				it.remove();
@@ -98,4 +104,19 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		forwarder.deregister(id);
 	}
 
+	public InetSocketAddress getLeftNeighbor() {
+		return leftNeighbor;
+	}
+
+	public InetSocketAddress getRightNeighbor() {
+		return rightNeighbor;
+	}
+
+	public void setLeftNeighbor(InetSocketAddress leftNeighbor){
+		this.leftNeighbor = leftNeighbor;
+	}
+
+	public void setRightNeighbor(InetSocketAddress rightNeighbor) {
+		this.rightNeighbor = rightNeighbor;
+	}
 }

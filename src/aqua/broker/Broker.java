@@ -71,21 +71,25 @@ public class Broker {
 
     }
 
-    public void register(Message msg, NeighborUpdate  neighbor){
-        //TODO: klienten die Nachbarn erkennen
+    public void register(Message msg){
         String name = "tank" + (fishCount++);
         clients.add(name, msg.getSender());
         endpoint.send(msg.getSender(), new RegisterResponse(name));
-        //TODO: lassen wir morgen machen
-        neighbor.setNeighbor(clients.indexOf(fishCount-1));
 
-
-
+        InetSocketAddress leftNeighbor = (InetSocketAddress) this.clients.getLeftNeighorOf(clients.size());
+        InetSocketAddress rightNeighbor = (InetSocketAddress) this.clients.getRightNeighorOf(clients.size());
+        endpoint.send(leftNeighbor, new NeighborUpdate(msg.getSender(), Direction.LEFT));
+        endpoint.send(rightNeighbor,new NeighborUpdate(msg.getSender(), Direction.RIGHT));
+        //TODO: Direction?
 
     }
 
     public void deregister(Message msg){
         clients.remove(clients.indexOf(((DeregisterRequest) msg.getPayload()).getId()));
+        InetSocketAddress leftNeighbor = (InetSocketAddress) this.clients.getLeftNeighorOf(clients.size());
+        InetSocketAddress rightNeighbor = (InetSocketAddress) this.clients.getRightNeighorOf(clients.size());
+        endpoint.send(leftNeighbor, new NeighborUpdate(msg.getSender(),  Direction.LEFT));
+        endpoint.send(rightNeighbor,new NeighborUpdate(msg.getSender(),  Direction.RIGHT));
     }
 
     public void handoff(HandoffRequest handoff, InetSocketAddress socketAddress){
@@ -109,6 +113,8 @@ public class Broker {
         Broker broker = new Broker();
         broker.broker();
     }
+
+
 
 
 }
