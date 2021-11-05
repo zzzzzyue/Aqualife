@@ -35,6 +35,13 @@ public class ClientCommunicator {
 		public void handOff(FishModel fish, InetSocketAddress neighbour) {
 			endpoint.send(neighbour, new HandoffRequest(fish));
 		}
+
+		public void sendToken(InetSocketAddress receiver) {
+			endpoint.send(receiver, new Token());
+		}
+
+		public void handOff(FishModel fish) {
+		}
 	}
 
 	public class ClientReceiver extends Thread {
@@ -56,10 +63,9 @@ public class ClientCommunicator {
 				if (msg.getPayload() instanceof HandoffRequest)
 					tankModel.receiveFish(((HandoffRequest) msg.getPayload()).getFish());
 
-				//TODO: Neighborupdate
-				//TODO: Fehlermeldunghier
 				if (msg.getPayload() instanceof NeighborUpdate)
 					neighborUpdate =((NeighborUpdate) msg.getPayload());
+				    //TODO: Fehlermeldung: Cannot invoke "aqua.common.msgtypes.NeighborUpdate.getDirection()" because "neighborUpdate" is null
 					if(neighborUpdate.getDirection() == Direction.LEFT){
 						tankModel.setLeftNeighbor(neighborUpdate.getNeighbor());
 					} else {

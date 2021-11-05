@@ -1,16 +1,14 @@
 package aqua.client;
 
 import java.net.InetSocketAddress;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Observable;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import aqua.common.Direction;
 import aqua.common.FishModel;
+import aqua.common.msgtypes.Token;
+import org.xml.sax.helpers.AttributesImpl;
 
 public class TankModel extends Observable implements Iterable<FishModel> {
 
@@ -22,14 +20,15 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected final Set<FishModel> fishies;
 	protected int fishCounter = 0;
 	protected final ClientCommunicator.ClientForwarder forwarder;
-	private InetSocketAddress leftNeighbor;
-	private InetSocketAddress rightNeighbor;
+	protected InetSocketAddress leftNeighbor;
+	protected InetSocketAddress rightNeighbor;
+	protected boolean hasToken;
+	protected Timer timer;
 
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
 		this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
 		this.forwarder = forwarder;
-		this.leftNeighbor = leftNeighbor;
-		this.rightNeighbor = rightNeighbor;
+		this.timer = new Timer();
 	}
 
 	synchronized void onRegistration(String id) {
@@ -72,14 +71,15 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 			fish.update();
 
-			//TODO: handoff the fish direction.
-			if (fish.hitsEdge())
-				forwarder.handOff(fish,leftNeighbor);
+			if (fish.hitsEdge()) {
+				forwarder.handOff(fish);
+			}
 
 			if (fish.disappears())
 				it.remove();
 		}
 	}
+
 
 	private synchronized void update() {
 		updateFishies();
@@ -110,6 +110,10 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 	public InetSocketAddress getRightNeighbor() {
 		return rightNeighbor;
+	}
+
+	public boolean hasToken(){
+		return this.hasToken;
 	}
 
 	public void setLeftNeighbor(InetSocketAddress leftNeighbor){

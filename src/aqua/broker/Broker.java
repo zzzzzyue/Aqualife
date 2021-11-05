@@ -74,22 +74,25 @@ public class Broker {
     public void register(Message msg){
         String name = "tank" + (fishCount++);
         clients.add(name, msg.getSender());
-        endpoint.send(msg.getSender(), new RegisterResponse(name));
+
 
         InetSocketAddress leftNeighbor = (InetSocketAddress) this.clients.getLeftNeighorOf(clients.size());
         InetSocketAddress rightNeighbor = (InetSocketAddress) this.clients.getRightNeighorOf(clients.size());
-        endpoint.send(leftNeighbor, new NeighborUpdate(msg.getSender(), Direction.LEFT));
-        endpoint.send(rightNeighbor,new NeighborUpdate(msg.getSender(), Direction.RIGHT));
-        //TODO: Direction?
+        endpoint.send(leftNeighbor, new NeighborUpdate(msg.getSender(), Direction.RIGHT));
+        endpoint.send(rightNeighbor,new NeighborUpdate(msg.getSender(), Direction.LEFT));
+        endpoint.send(msg.getSender(), new NeighborUpdate(leftNeighbor, Direction.LEFT));
+        endpoint.send(msg.getSender(), new NeighborUpdate(rightNeighbor, Direction.RIGHT));
+        //send response
+        endpoint.send(msg.getSender(), new RegisterResponse(name));
 
     }
 
     public void deregister(Message msg){
-        clients.remove(clients.indexOf(((DeregisterRequest) msg.getPayload()).getId()));
         InetSocketAddress leftNeighbor = (InetSocketAddress) this.clients.getLeftNeighorOf(clients.size());
         InetSocketAddress rightNeighbor = (InetSocketAddress) this.clients.getRightNeighorOf(clients.size());
-        endpoint.send(leftNeighbor, new NeighborUpdate(msg.getSender(),  Direction.LEFT));
-        endpoint.send(rightNeighbor,new NeighborUpdate(msg.getSender(),  Direction.RIGHT));
+        endpoint.send(leftNeighbor, new NeighborUpdate(msg.getSender(),  Direction.RIGHT));
+        endpoint.send(rightNeighbor,new NeighborUpdate(msg.getSender(),  Direction.LEFT));
+        clients.remove(clients.indexOf(((DeregisterRequest) msg.getPayload()).getId()));
     }
 
     public void handoff(HandoffRequest handoff, InetSocketAddress socketAddress){
