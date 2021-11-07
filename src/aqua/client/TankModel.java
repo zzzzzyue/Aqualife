@@ -53,6 +53,20 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		fishies.add(fish);
 	}
 
+	public void receiveToken() {
+		this.hasToken = true;
+		TimerTask task = new TimerTask() {
+			@Override
+			public void run() {
+				hasToken = false;
+				forwarder.sendToken(leftNeighbor);
+			}
+		};
+
+		this.timer.schedule(task, 2000L );
+
+	}
+
 	public String getId() {
 		return id;
 	}
@@ -71,8 +85,14 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 			fish.update();
 
+			//TODO: fish reverse
 			if (fish.hitsEdge()) {
-				forwarder.handOff(fish);
+				if(!hasToken) {
+					//TODO: fish hand off
+					forwarder.handOff(fish);
+				} else {
+					fish.reverse();
+				}
 			}
 
 			if (fish.disappears())

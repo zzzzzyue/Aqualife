@@ -24,6 +24,7 @@ public class Broker {
     ExecutorService executor = Executors.newFixedThreadPool(THREADSNUM);
     ReadWriteLock rw = new ReentrantReadWriteLock();
     volatile boolean stopRequest = false;
+    boolean hasToken = false;
 
 
 
@@ -78,20 +79,24 @@ public class Broker {
 
         InetSocketAddress leftNeighbor = (InetSocketAddress) this.clients.getLeftNeighorOf(clients.size());
         InetSocketAddress rightNeighbor = (InetSocketAddress) this.clients.getRightNeighorOf(clients.size());
-        endpoint.send(leftNeighbor, new NeighborUpdate(msg.getSender(), Direction.RIGHT));
-        endpoint.send(rightNeighbor,new NeighborUpdate(msg.getSender(), Direction.LEFT));
-        endpoint.send(msg.getSender(), new NeighborUpdate(leftNeighbor, Direction.LEFT));
-        endpoint.send(msg.getSender(), new NeighborUpdate(rightNeighbor, Direction.RIGHT));
+        endpoint.send(leftNeighbor, new NeighbourUpdate(msg.getSender(), Direction.RIGHT));
+        endpoint.send(rightNeighbor,new NeighbourUpdate(msg.getSender(), Direction.LEFT));
+        endpoint.send(msg.getSender(), new NeighbourUpdate(leftNeighbor, Direction.LEFT));
+        endpoint.send(msg.getSender(), new NeighbourUpdate(rightNeighbor, Direction.RIGHT));
         //send response
         endpoint.send(msg.getSender(), new RegisterResponse(name));
+
+        if(hasToken == false) {
+            this.endpoint.send(msg.getSender(), new Token());
+        }
 
     }
 
     public void deregister(Message msg){
         InetSocketAddress leftNeighbor = (InetSocketAddress) this.clients.getLeftNeighorOf(clients.size());
         InetSocketAddress rightNeighbor = (InetSocketAddress) this.clients.getRightNeighorOf(clients.size());
-        endpoint.send(leftNeighbor, new NeighborUpdate(msg.getSender(),  Direction.RIGHT));
-        endpoint.send(rightNeighbor,new NeighborUpdate(msg.getSender(),  Direction.LEFT));
+        endpoint.send(leftNeighbor, new NeighbourUpdate(msg.getSender(),  Direction.RIGHT));
+        endpoint.send(rightNeighbor,new NeighbourUpdate(msg.getSender(),  Direction.LEFT));
         clients.remove(clients.indexOf(((DeregisterRequest) msg.getPayload()).getId()));
     }
 

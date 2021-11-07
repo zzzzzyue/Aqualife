@@ -37,7 +37,7 @@ public class ClientCommunicator {
 		}
 
 		public void sendToken(InetSocketAddress receiver) {
-			endpoint.send(receiver, new Token());
+			endpoint.send(receiver ,new Token());
 		}
 
 		public void handOff(FishModel fish) {
@@ -55,7 +55,6 @@ public class ClientCommunicator {
 		public void run() {
 			while (!isInterrupted()) {
 				Message msg = endpoint.blockingReceive();
-				NeighborUpdate neighborUpdate = null;
 
 				if (msg.getPayload() instanceof RegisterResponse)
 					tankModel.onRegistration(((RegisterResponse) msg.getPayload()).getId());
@@ -63,15 +62,20 @@ public class ClientCommunicator {
 				if (msg.getPayload() instanceof HandoffRequest)
 					tankModel.receiveFish(((HandoffRequest) msg.getPayload()).getFish());
 
-				if (msg.getPayload() instanceof NeighborUpdate)
-					neighborUpdate =((NeighborUpdate) msg.getPayload());
-				    //TODO: Fehlermeldung: Cannot invoke "aqua.common.msgtypes.NeighborUpdate.getDirection()" because "neighborUpdate" is null
-					if(neighborUpdate.getDirection() == Direction.LEFT){
-						tankModel.setLeftNeighbor(neighborUpdate.getNeighbor());
+				if (msg.getPayload() instanceof NeighbourUpdate) {
+					NeighbourUpdate update = ((NeighbourUpdate) msg.getPayload());
+					if(update.getDirection() == Direction.LEFT){
+						tankModel.setLeftNeighbor(update.getNeighbour());
 					} else {
-						tankModel.setRightNeighbor(neighborUpdate.getNeighbor());
+						tankModel.setRightNeighbor(update.getNeighbour());
 					}
-			}
+				}
+				if (msg.getPayload() instanceof Token) {
+					tankModel.receiveToken();
+				}
+
+				}
+
 			System.out.println("Receiver stopped.");
 		}
 	}
