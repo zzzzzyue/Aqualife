@@ -20,11 +20,13 @@ public class Broker {
     int fishCount = 0;
     int THREADSNUM = 5;
     Endpoint endpoint = new Endpoint(4711);
-    ClientCollection clients = new ClientCollection();
+    ClientCollection clients = new ClientCollection<InetSocketAddress>();
     ExecutorService executor = Executors.newFixedThreadPool(THREADSNUM);
     ReadWriteLock rw = new ReentrantReadWriteLock();
     volatile boolean stopRequest = false;
     boolean hasToken = true;
+
+    private String tankID(int number){return "tank" + number; }
 
 
 
@@ -75,30 +77,33 @@ public class Broker {
     }
 
     public void register(Message msg){
-        String name = "tank" + (fishCount++);
-        clients.add(name, msg.getSender());
+
+        clients.add(tankID(fishCount), msg.getSender());
+        fishCount++;
+        System.out.println(fishCount);
+
+        int index = clients.indexOf(tankID(fishCount));
 
 
-        InetSocketAddress leftNeighbor = (InetSocketAddress) this.clients.getLeftNeighorOf(clients.size());
-        InetSocketAddress rightNeighbor = (InetSocketAddress) this.clients.getRightNeighorOf(clients.size());
-        endpoint.send(leftNeighbor, new NeighbourUpdate(msg.getSender(), Direction.RIGHT));
-        endpoint.send(rightNeighbor,new NeighbourUpdate(msg.getSender(), Direction.LEFT));
-        endpoint.send(msg.getSender(), new NeighbourUpdate(leftNeighbor, Direction.LEFT));
-        endpoint.send(msg.getSender(), new NeighbourUpdate(rightNeighbor, Direction.RIGHT));
+
+        endpoint.send(msg.getSender(), new NeighbourUpdate((InetSocketAddress) clients.getLeftNeighorOf(index-1), Direction.LEFT));
+        endpoint.send(msg.getSender(), new NeighbourUpdate((InetSocketAddress) clients.getRightNeighorOf(index-1), Direction.RIGHT));
+        endpoint.send((InetSocketAddress) clients.getLeftNeighorOf(index -1), new NeighbourUpdate(msg.getSender(), Direction.RIGHT));
+        endpoint.send((InetSocketAddress) clients.getRightNeighorOf(index-1),new NeighbourUpdate(msg.getSender(), Direction.LEFT));
         //new client register
-        endpoint.send(msg.getSender(), new RegisterResponse(name));
+        endpoint.send(msg.getSender(), new RegisterResponse(tankID(fishCount)));
 
         if(this.hasToken) {
             this.endpoint.send(msg.getSender(), new Token());
+            hasToken=false;
         }
 
     }
 
     public void deregister(Message msg){
-        InetSocketAddress leftNeighbor = (InetSocketAddress) this.clients.getLeftNeighorOf(clients.size());
-        InetSocketAddress rightNeighbor = (InetSocketAddress) this.clients.getRightNeighorOf(clients.size());
-        endpoint.send(leftNeighbor, new NeighbourUpdate(msg.getSender(),  Direction.RIGHT));
-        endpoint.send(rightNeighbor,new NeighbourUpdate(msg.getSender(),  Direction.LEFT));
+        int index = clients.indexOf(tankID(fishCount));
+        endpoint.send((InetSocketAddress) clients.getLeftNeighorOf(index), new NeighbourUpdate(msg.getSender(),  Direction.RIGHT));
+        endpoint.send((InetSocketAddress) clients.getRightNeighorOf(index),new NeighbourUpdate(msg.getSender(),  Direction.LEFT));
         clients.remove(clients.indexOf(((DeregisterRequest) msg.getPayload()).getId()));
     }
 
