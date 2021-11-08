@@ -40,8 +40,6 @@ public class ClientCommunicator {
 			endpoint.send(receiver ,new Token());
 		}
 
-		public void handOff(FishModel fish) {
-		}
 	}
 
 	public class ClientReceiver extends Thread {
@@ -74,7 +72,7 @@ public class ClientCommunicator {
 					tankModel.receiveToken();
 				}
 
-				}
+			}
 
 			System.out.println("Receiver stopped.");
 		}

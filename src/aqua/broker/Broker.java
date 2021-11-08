@@ -24,7 +24,7 @@ public class Broker {
     ExecutorService executor = Executors.newFixedThreadPool(THREADSNUM);
     ReadWriteLock rw = new ReentrantReadWriteLock();
     volatile boolean stopRequest = false;
-    boolean hasToken = false;
+    boolean hasToken = true;
 
 
 
@@ -56,6 +56,7 @@ public class Broker {
             if(msg.getPayload() instanceof DeregisterRequest) {
                 synchronized (clients) {deregister(msg);}
             }
+            /**
             if(msg.getPayload() instanceof HandoffRequest) {
                 rw.writeLock().lock();
                 HandoffRequest handoffRequest = (HandoffRequest) msg.getPayload();
@@ -63,6 +64,7 @@ public class Broker {
                 handoff(handoffRequest, inetSocketAddress);
                 rw.writeLock().unlock();
             }
+             **/
 
             if(msg.getPayload() instanceof  PoisonPill) {
                 System.exit(0);
@@ -83,10 +85,10 @@ public class Broker {
         endpoint.send(rightNeighbor,new NeighbourUpdate(msg.getSender(), Direction.LEFT));
         endpoint.send(msg.getSender(), new NeighbourUpdate(leftNeighbor, Direction.LEFT));
         endpoint.send(msg.getSender(), new NeighbourUpdate(rightNeighbor, Direction.RIGHT));
-        //send response
+        //new client register
         endpoint.send(msg.getSender(), new RegisterResponse(name));
 
-        if(hasToken == false) {
+        if(this.hasToken) {
             this.endpoint.send(msg.getSender(), new Token());
         }
 
@@ -100,6 +102,7 @@ public class Broker {
         clients.remove(clients.indexOf(((DeregisterRequest) msg.getPayload()).getId()));
     }
 
+    /**
     public void handoff(HandoffRequest handoff, InetSocketAddress socketAddress){
         int index = clients.indexOf(socketAddress);
         FishModel fish = handoff.getFish();
@@ -116,6 +119,7 @@ public class Broker {
 
 
     }
+     **/
 
     public static void main(String[] args){
         Broker broker = new Broker();

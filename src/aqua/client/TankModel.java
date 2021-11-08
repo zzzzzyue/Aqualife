@@ -85,11 +85,13 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 			fish.update();
 
-			//TODO: fish reverse
 			if (fish.hitsEdge()) {
-				if(!hasToken) {
-					//TODO: fish hand off
-					forwarder.handOff(fish);
+				if(hasToken) {
+					if(fish.getDirection() == Direction.LEFT) {
+						forwarder.handOff(fish, getLeftNeighbor());
+					} else {
+						forwarder.handOff(fish, getRightNeighbor());
+					}
 				} else {
 					fish.reverse();
 				}
