@@ -17,7 +17,7 @@ public class Broker {
 
     // noch frage zur Aufgabe2: die Joptionpane legt immer unter allem Fenster und wenn man das Fenster zumacht, dann kommt kein
     //
-    int fishCount = 0;
+    int tankCount;
     int THREADSNUM = 5;
     Endpoint endpoint = new Endpoint(4711);
     ClientCollection clients = new ClientCollection<InetSocketAddress>();
@@ -77,21 +77,18 @@ public class Broker {
     }
 
     public void register(Message msg){
+        //TODO:where is tank0?
+        tankCount++;
+        clients.add(tankID(tankCount), msg.getSender());
 
-        clients.add(tankID(fishCount), msg.getSender());
-        fishCount++;
-        System.out.println(fishCount);
-
-        int index = clients.indexOf(tankID(fishCount));
-
-
+        int index = clients.indexOf(tankID(tankCount));
 
         endpoint.send(msg.getSender(), new NeighbourUpdate((InetSocketAddress) clients.getLeftNeighorOf(index-1), Direction.LEFT));
         endpoint.send(msg.getSender(), new NeighbourUpdate((InetSocketAddress) clients.getRightNeighorOf(index-1), Direction.RIGHT));
         endpoint.send((InetSocketAddress) clients.getLeftNeighorOf(index -1), new NeighbourUpdate(msg.getSender(), Direction.RIGHT));
         endpoint.send((InetSocketAddress) clients.getRightNeighorOf(index-1),new NeighbourUpdate(msg.getSender(), Direction.LEFT));
         //new client register
-        endpoint.send(msg.getSender(), new RegisterResponse(tankID(fishCount)));
+        endpoint.send(msg.getSender(), new RegisterResponse(tankID(tankCount)));
 
         if(this.hasToken) {
             this.endpoint.send(msg.getSender(), new Token());
@@ -101,7 +98,7 @@ public class Broker {
     }
 
     public void deregister(Message msg){
-        int index = clients.indexOf(tankID(fishCount));
+        int index = clients.indexOf(tankID(tankCount));
         endpoint.send((InetSocketAddress) clients.getLeftNeighorOf(index), new NeighbourUpdate(msg.getSender(),  Direction.RIGHT));
         endpoint.send((InetSocketAddress) clients.getRightNeighorOf(index),new NeighbourUpdate(msg.getSender(),  Direction.LEFT));
         clients.remove(clients.indexOf(((DeregisterRequest) msg.getPayload()).getId()));
