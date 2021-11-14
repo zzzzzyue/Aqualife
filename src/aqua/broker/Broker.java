@@ -15,12 +15,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Broker {
 
-    // noch frage zur Aufgabe2: die Joptionpane legt immer unter allem Fenster und wenn man das Fenster zumacht, dann kommt kein
-    //
-    int tankCount;
+    int tankCount = 0;
     int THREADSNUM = 5;
     Endpoint endpoint = new Endpoint(4711);
-    ClientCollection clients = new ClientCollection<InetSocketAddress>();
+    ClientCollection<InetSocketAddress> clients = new ClientCollection<>();
     ExecutorService executor = Executors.newFixedThreadPool(THREADSNUM);
     ReadWriteLock rw = new ReentrantReadWriteLock();
     volatile boolean stopRequest = false;
@@ -58,16 +56,6 @@ public class Broker {
             if(msg.getPayload() instanceof DeregisterRequest) {
                 synchronized (clients) {deregister(msg);}
             }
-            /**
-            if(msg.getPayload() instanceof HandoffRequest) {
-                rw.writeLock().lock();
-                HandoffRequest handoffRequest = (HandoffRequest) msg.getPayload();
-                InetSocketAddress inetSocketAddress = msg.getSender();
-                handoff(handoffRequest, inetSocketAddress);
-                rw.writeLock().unlock();
-            }
-             **/
-
             if(msg.getPayload() instanceof  PoisonPill) {
                 System.exit(0);
             }
@@ -83,10 +71,10 @@ public class Broker {
 
         int index = clients.indexOf(tankID(tankCount));
 
-        endpoint.send(msg.getSender(), new NeighbourUpdate((InetSocketAddress) clients.getLeftNeighorOf(index-1), Direction.LEFT));
-        endpoint.send(msg.getSender(), new NeighbourUpdate((InetSocketAddress) clients.getRightNeighorOf(index-1), Direction.RIGHT));
-        endpoint.send((InetSocketAddress) clients.getLeftNeighorOf(index -1), new NeighbourUpdate(msg.getSender(), Direction.RIGHT));
-        endpoint.send((InetSocketAddress) clients.getRightNeighorOf(index-1),new NeighbourUpdate(msg.getSender(), Direction.LEFT));
+        endpoint.send(msg.getSender(), new NeighbourUpdate(clients.getLeftNeighorOf(index), Direction.LEFT));
+        endpoint.send(msg.getSender(), new NeighbourUpdate(clients.getRightNeighorOf(index), Direction.RIGHT));
+        endpoint.send( clients.getLeftNeighorOf(index), new NeighbourUpdate(msg.getSender(), Direction.RIGHT));
+        endpoint.send(clients.getRightNeighorOf(index), new NeighbourUpdate(msg.getSender(), Direction.LEFT));
         //new client register
         endpoint.send(msg.getSender(), new RegisterResponse(tankID(tankCount)));
 
