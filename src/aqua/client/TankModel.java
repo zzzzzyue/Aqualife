@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit;
 
 import aqua.common.Direction;
 import aqua.common.FishModel;
+import aqua.common.msgtypes.SnapshotMarker;
 import aqua.common.msgtypes.Token;
 import org.xml.sax.helpers.AttributesImpl;
 
@@ -27,6 +28,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected boolean hasToken;
 	protected Timer timer;
 	protected RecordStates recordState = RecordStates.IDLE;
+	protected boolean initiator = false;
 	private  int fishSum = 0;
 	protected int globalSnapshot = 0;
 	protected boolean showDialog;
@@ -83,35 +85,64 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 	}
 
-	//added in receiver
-	public void receiveMarker(InetSocketAddress sender) {
-		if(recordState==RecordStates.IDLE){
-			fishSum = fishies.size();
-			if (sender==leftNeighbor) recordState=RecordStates.RIGHT;
-			else if (sender == rightNeighbor) recordState = RecordStates.LEFT;
-			forwarder.sendMarker(leftNeighbor);
-			forwarder.sendMarker(rightNeighbor);
-		}
-		else {
-			if(sender.equals(leftNeighbor)) {
-				if(recordState == RecordStates.LEFT) {
 
-				}
-			} else if (sender.equals(rightNeighbor)) {
-
-			}
-
-
-		}
-	}
 
 	//aufgabe4 begins
 	public void initiateSnapshot(InetSocketAddress neighbor) {
-		fishSum = fishies.size();
-		recordState = RecordStates.BOTH;
-		forwarder.sendMarker(leftNeighbor);
-		forwarder.sendMarker(rightNeighbor);
+		if(recordState == RecordStates.IDLE) {
+			fishSum = fishies.size();
+			recordState = RecordStates.BOTH;
+			initiator = true;
+			forwarder.sendMarker(leftNeighbor, new SnapshotMarker());
+			forwarder.sendMarker(rightNeighbor, new SnapshotMarker());
+		}
+	}
 
+	//added in receiver
+	public void receiveMarker(InetSocketAddress sender, SnapshotMarker snapshotMarker) {
+		if(recordState==RecordStates.IDLE){
+			fishSum = fishies.size();
+			//one window
+			if(leftNeighbor.equals(rightNeighbor)) {
+				recordState = RecordStates.BOTH;
+				forwarder.sendMarker(leftNeighbor, snapshotMarker);
+			} else {
+				if(sender.equals(leftNeighbor)) {
+					recordState = RecordStates.RIGHT;
+				} else if(sender.equals(rightNeighbor)) {
+					recordState = RecordStates.LEFT;
+				}
+				forwarder.sendMarker(leftNeighbor, snapshotMarker);
+				forwarder.sendMarker(rightNeighbor, snapshotMarker);
+			}
+
+		} else {
+			if(leftNeighbor.equals(rightNeighbor)) {
+				recordState = RecordStates.IDLE;
+			} else  {
+				if(sender.equals(leftNeighbor)) {
+					if(recordState == RecordStates.BOTH){
+						recordState = RecordStates.RIGHT;
+					}
+					if(recordState == RecordStates.LEFT){
+						recordState = RecordStates.IDLE;
+					}
+				} else if(sender.equals(rightNeighbor)) {
+					if(recordState == RecordStates.BOTH){
+						recordState = RecordStates.LEFT;
+					}
+					if(recordState == RecordStates.RIGHT){
+						recordState = RecordStates.IDLE;
+					}
+				}
+			}
+
+		}
+
+		if(initiator && recordState == RecordStates.IDLE) {
+			//startcontroller
+
+		}
 	}
 
 	public String getId() {

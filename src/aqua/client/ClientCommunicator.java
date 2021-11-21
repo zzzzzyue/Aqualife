@@ -40,8 +40,8 @@ public class ClientCommunicator {
 			endpoint.send(receiver ,new Token());
 		}
 
-		public void sendMarker(InetSocketAddress receiver) {
-			endpoint.send(receiver ,new SnapshotMarker());
+		public void sendMarker(InetSocketAddress receiver, SnapshotMarker snapshotMarker) {
+			endpoint.send(receiver ,snapshotMarker);
 		}
 
 
@@ -78,7 +78,7 @@ public class ClientCommunicator {
 				}
 
 				if (msg.getPayload() instanceof SnapshotMarker) {
-					tankModel.receiveMarker(msg.getSender());
+					tankModel.receiveMarker(msg.getSender(), (SnapshotMarker) msg.getPayload());
 				}
 
 			}
