@@ -10,6 +10,8 @@ import aqua.common.FishModel;
 import aqua.common.msgtypes.Token;
 import org.xml.sax.helpers.AttributesImpl;
 
+enum RecordStates {IDLE, RIGHT, LEFT, BOTH}
+
 public class TankModel extends Observable implements Iterable<FishModel> {
 
 	public static final int WIDTH = 600;
@@ -24,6 +26,8 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected InetSocketAddress rightNeighbor;
 	protected boolean hasToken;
 	protected Timer timer;
+	protected RecordStates recordState = RecordStates.IDLE;
+	private  int fishSum = 0;
 
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
 		this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
@@ -51,6 +55,16 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	synchronized void receiveFish(FishModel fish) {
 		fish.setToStart();
 		fishies.add(fish);
+		if(fish.getDirection() == Direction.RIGHT){
+			if(recordState == RecordStates.BOTH || recordState == RecordStates.LEFT) {
+				fishSum++;
+			}
+		}
+		if(fish.getDirection() == Direction.LEFT){
+			if(recordState == RecordStates.BOTH || recordState == RecordStates.RIGHT) {
+				fishSum++;
+			}
+		}
 	}
 
 	public void receiveToken() {
@@ -64,6 +78,37 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		};
 
 		this.timer.schedule(task, 2000L );
+
+	}
+
+	//added in receiver
+	public void receiveMarker(InetSocketAddress sender) {
+		if(recordState==RecordStates.IDLE){
+			fishSum = fishies.size();
+			if (sender==leftNeighbor) recordState=RecordStates.RIGHT;
+			else if (sender == rightNeighbor) recordState = RecordStates.LEFT;
+			forwarder.sendMarker(leftNeighbor);
+			forwarder.sendMarker(rightNeighbor);
+		}
+		else {
+			if(sender.equals(leftNeighbor)) {
+				if(recordState == RecordStates.LEFT) {
+
+				}
+			} else if (sender.equals(rightNeighbor)) {
+
+			}
+
+
+		}
+	}
+
+	//aufgabe4 begins
+	public void initiateSnapshot(InetSocketAddress neighbor) {
+		fishSum = fishies.size();
+		recordState = RecordStates.BOTH;
+		forwarder.sendMarker(leftNeighbor);
+		forwarder.sendMarker(rightNeighbor);
 
 	}
 

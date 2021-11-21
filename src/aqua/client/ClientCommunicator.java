@@ -40,6 +40,11 @@ public class ClientCommunicator {
 			endpoint.send(receiver ,new Token());
 		}
 
+		public void sendMarker(InetSocketAddress receiver) {
+			endpoint.send(receiver ,new SnapshotMarker());
+		}
+
+
 	}
 
 	public class ClientReceiver extends Thread {
@@ -70,6 +75,10 @@ public class ClientCommunicator {
 				}
 				if (msg.getPayload() instanceof Token) {
 					tankModel.receiveToken();
+				}
+
+				if (msg.getPayload() instanceof SnapshotMarker) {
+					tankModel.receiveMarker(msg.getSender());
 				}
 
 			}
