@@ -3,11 +3,14 @@ package aqua.client;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import aqua.common.Direction;
 import aqua.common.FishModel;
 import aqua.common.msgtypes.SnapshotMarker;
+import aqua.common.msgtypes.SnapshotSum;
 import aqua.common.msgtypes.Token;
 import org.xml.sax.helpers.AttributesImpl;
 
@@ -30,8 +33,11 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected RecordStates recordState = RecordStates.IDLE;
 	protected boolean initiator = false;
 	private  int fishSum = 0;
+	protected boolean waitIDLE=false;
 	protected int globalSnapshot = 0;
 	protected boolean showDialog;
+	public final int THREADPOOL = 5;
+	ExecutorService executor = Executors.newFixedThreadPool(THREADPOOL);
 
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
 		this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
@@ -68,7 +74,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 			if(recordState == RecordStates.BOTH || recordState == RecordStates.RIGHT) {
 				fishSum++;
 			}
-		}
+		 }
 	}
 
 	public void receiveToken() {
@@ -77,7 +83,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 			@Override
 			public void run() {
 				hasToken = false;
-				forwarder.sendToken(leftNeighbor);
+				forwarder.sendToken(leftNeighbor, new Token());
 			}
 		};
 
@@ -140,9 +146,32 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		}
 
 		if(initiator && recordState == RecordStates.IDLE) {
-			//startcontroller
-
+			//start collecting sum
+			forwarder.sendSum(leftNeighbor, new SnapshotSum(fishSum));
 		}
+	}
+
+	public void receiveSum(SnapshotSum snapshotSum) {
+		waitIDLE = true;
+		if(initiator) {
+			initiator = false;
+			showDialog = true;
+			System.out.println(snapshotSum.getFishSum() + "fishes");
+			globalSnapshot = snapshotSum.getFishSum();
+		}
+		executor.execute(new Runnable() {
+			@Override
+			public void run() {
+				while (waitIDLE == true) {
+					if(recordState == RecordStates.IDLE) {
+						int currentFish = snapshotSum.getFishSum();
+						int currentState = currentFish + fishSum;
+						forwarder.sendSum(leftNeighbor, new SnapshotSum(currentState));
+						waitIDLE = false;
+					}
+				}
+			}
+		});
 	}
 
 	public String getId() {

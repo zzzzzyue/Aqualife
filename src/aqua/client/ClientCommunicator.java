@@ -36,12 +36,16 @@ public class ClientCommunicator {
 			endpoint.send(neighbour, new HandoffRequest(fish));
 		}
 
-		public void sendToken(InetSocketAddress receiver) {
-			endpoint.send(receiver ,new Token());
+		public void sendToken(InetSocketAddress receiver, Token token) {
+			endpoint.send(receiver ,token);
 		}
 
 		public void sendMarker(InetSocketAddress receiver, SnapshotMarker snapshotMarker) {
 			endpoint.send(receiver ,snapshotMarker);
+		}
+
+		public void sendSum(InetSocketAddress receiver, SnapshotSum snapshotSum) {
+			endpoint.send(receiver ,snapshotSum);
 		}
 
 
@@ -79,6 +83,10 @@ public class ClientCommunicator {
 
 				if (msg.getPayload() instanceof SnapshotMarker) {
 					tankModel.receiveMarker(msg.getSender(), (SnapshotMarker) msg.getPayload());
+				}
+
+				if (msg.getPayload() instanceof SnapshotSum) {
+					tankModel.receiveSum((SnapshotSum) msg.getPayload());
 				}
 
 			}
