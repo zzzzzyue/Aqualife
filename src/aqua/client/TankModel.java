@@ -28,6 +28,8 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected Timer timer;
 	protected RecordStates recordState = RecordStates.IDLE;
 	private  int fishSum = 0;
+	protected int globalSnapshot = 0;
+	protected boolean showDialog;
 
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
 		this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
