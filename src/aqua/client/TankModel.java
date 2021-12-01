@@ -79,7 +79,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 	public void receiveToken() {
 		this.hasToken = true;
-		TimerTask task = new TimerTask() {
+		TimerTask task = new TimerTask(){
 			@Override
 			public void run() {
 				hasToken = false;
