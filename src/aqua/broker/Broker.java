@@ -15,111 +15,91 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Broker {
 
-    // noch frage zur Aufgabe2: die Joptionpane legt immer unter allem Fenster und wenn man das Fenster zumacht, dann kommt kein
-    //
-    int fishCount = 0;
-    int THREADSNUM = 5;
-    Endpoint endpoint = new Endpoint(4711);
-    ClientCollection clients = new ClientCollection();
-    ExecutorService executor = Executors.newFixedThreadPool(THREADSNUM);
+    int tankCount = 0;
+    private static final int THREADSNUM = 5;
+    Endpoint endpoint;
+    ClientCollection<InetSocketAddress> clients;
+    ExecutorService executor;
     ReadWriteLock rw = new ReentrantReadWriteLock();
-    volatile boolean stopRequest = false;
-    boolean hasToken = true;
+    volatile boolean stopRequest;
+    boolean hasToken;
 
+    private String tankID(int number){return "tank" + number; }
 
-
+    public Broker() {
+        this.clients = new ClientCollection<>();
+        this.endpoint = new Endpoint(4711);
+        this.stopRequest = false;
+        this.hasToken = true;
+        this.executor = Executors.newFixedThreadPool(THREADSNUM);
+        executor.execute(new StopRequested());
+    }
 
     public void broker(){
-
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                JOptionPane.showMessageDialog(null,"Press OK button to stop server");
-                stopRequest=true;
-            }
-        });
-
+        Message msg;
         while(!stopRequest){
-            Message message = endpoint.blockingReceive();
-            BrokerTask brokerTask = new BrokerTask();
-            executor.execute(() -> brokerTask.brokerTask(message));
-
+            if((msg = endpoint.nonBlockingReceive()) != null) {
+                executor.execute(new BrokerTask(msg));
+            }
         }
         executor.shutdown();
     }
 
-    private class BrokerTask {
-        public void brokerTask(Message msg){
-            if(msg.getPayload() instanceof RegisterRequest) {
-                synchronized (clients) {register(msg);}
-            }
-            if(msg.getPayload() instanceof DeregisterRequest) {
-                synchronized (clients) {deregister(msg);}
-            }
-            /**
-            if(msg.getPayload() instanceof HandoffRequest) {
-                rw.writeLock().lock();
-                HandoffRequest handoffRequest = (HandoffRequest) msg.getPayload();
-                InetSocketAddress inetSocketAddress = msg.getSender();
-                handoff(handoffRequest, inetSocketAddress);
-                rw.writeLock().unlock();
-            }
-             **/
+    class StopRequested implements Runnable {
+        @Override
+        public void run() {
+            JOptionPane.showMessageDialog(null,"Press OK button to stop server");
+            stopRequest=true;
+        }
+    }
 
-            if(msg.getPayload() instanceof  PoisonPill) {
-                System.exit(0);
-            }
+    class BrokerTask implements Runnable {
+        Message msg;
 
+        private BrokerTask(Message msg) {
+            this.msg = msg;
         }
 
+        @Override
+        public void run() {
+            if(msg.getPayload() instanceof RegisterRequest) {
+                register(msg);
+            }
+            if(msg.getPayload() instanceof DeregisterRequest) {
+                deregister(msg);
+            }
+            if(msg.getPayload() instanceof  PoisonPill) {
+                stopRequest = true;
+            }
+        }
     }
 
     public void register(Message msg){
-        String name = "tank" + (fishCount++);
-        clients.add(name, msg.getSender());
+        tankCount++;
+        clients.add(tankID(tankCount), msg.getSender());
 
+        int index = clients.indexOf(tankID(tankCount));
 
-        InetSocketAddress leftNeighbor = (InetSocketAddress) this.clients.getLeftNeighorOf(clients.size());
-        InetSocketAddress rightNeighbor = (InetSocketAddress) this.clients.getRightNeighorOf(clients.size());
-        endpoint.send(leftNeighbor, new NeighbourUpdate(msg.getSender(), Direction.RIGHT));
-        endpoint.send(rightNeighbor,new NeighbourUpdate(msg.getSender(), Direction.LEFT));
-        endpoint.send(msg.getSender(), new NeighbourUpdate(leftNeighbor, Direction.LEFT));
-        endpoint.send(msg.getSender(), new NeighbourUpdate(rightNeighbor, Direction.RIGHT));
+        endpoint.send(msg.getSender(), new NeighbourUpdate(clients.getLeftNeighorOf(index), Direction.LEFT));
+        endpoint.send(msg.getSender(), new NeighbourUpdate(clients.getRightNeighorOf(index), Direction.RIGHT));
+        endpoint.send( clients.getLeftNeighorOf(index), new NeighbourUpdate(msg.getSender(), Direction.RIGHT));
+        endpoint.send(clients.getRightNeighorOf(index), new NeighbourUpdate(msg.getSender(), Direction.LEFT));
         //new client register
-        endpoint.send(msg.getSender(), new RegisterResponse(name));
+        endpoint.send(msg.getSender(), new RegisterResponse(tankID(tankCount)));
 
         if(this.hasToken) {
             this.endpoint.send(msg.getSender(), new Token());
+            hasToken=false;
         }
 
     }
 
     public void deregister(Message msg){
-        InetSocketAddress leftNeighbor = (InetSocketAddress) this.clients.getLeftNeighorOf(clients.size());
-        InetSocketAddress rightNeighbor = (InetSocketAddress) this.clients.getRightNeighorOf(clients.size());
-        endpoint.send(leftNeighbor, new NeighbourUpdate(msg.getSender(),  Direction.RIGHT));
-        endpoint.send(rightNeighbor,new NeighbourUpdate(msg.getSender(),  Direction.LEFT));
+        int index = clients.indexOf(tankID(tankCount));
+        endpoint.send(clients.getLeftNeighorOf(index), new NeighbourUpdate(msg.getSender(),  Direction.RIGHT));
+        endpoint.send( clients.getRightNeighorOf(index),new NeighbourUpdate(msg.getSender(),  Direction.LEFT));
         clients.remove(clients.indexOf(((DeregisterRequest) msg.getPayload()).getId()));
     }
-
-    /**
-    public void handoff(HandoffRequest handoff, InetSocketAddress socketAddress){
-        int index = clients.indexOf(socketAddress);
-        FishModel fish = handoff.getFish();
-        Direction direction = fish.getDirection();
-
-        InetSocketAddress neighbor;
-        if(direction == Direction.LEFT){
-            neighbor=(InetSocketAddress) clients.getLeftNeighorOf(index);
-        } else {
-            neighbor=(InetSocketAddress) clients.getRightNeighorOf(index);
-        }
-
-        endpoint.send(neighbor, handoff);
-
-
-    }
-     **/
 
     public static void main(String[] args){
         Broker broker = new Broker();
