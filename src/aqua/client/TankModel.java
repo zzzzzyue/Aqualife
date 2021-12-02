@@ -11,10 +11,7 @@ import aqua.common.Direction;
 import aqua.common.FishModel;
 import aqua.common.Location;
 import aqua.common.RecordStates;
-import aqua.common.msgtypes.LocationRequest;
-import aqua.common.msgtypes.SnapshotMarker;
-import aqua.common.msgtypes.SnapshotSum;
-import aqua.common.msgtypes.Token;
+import aqua.common.msgtypes.*;
 import org.xml.sax.helpers.AttributesImpl;
 
 
@@ -40,7 +37,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected boolean showDialog;
 	public final int THREADPOOL = 5;
 	ExecutorService executor = Executors.newFixedThreadPool(THREADPOOL);
-	Map<String, Location> fishLocationMap = new HashMap<>();
+	Map<String, InetSocketAddress> homeAgent = new HashMap<>();
 
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
 		this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
@@ -62,7 +59,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 					rand.nextBoolean() ? Direction.LEFT : Direction.RIGHT);
 
 			fishies.add(fish);
-			fishLocationMap.put(fish.getId(), Location.HERE);
+			homeAgent.put(fish.getId(), null);
 		}
 	}
 
@@ -79,7 +76,14 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 				fishSum++;
 			}
 		}
-		fishLocationMap.put(fish.getId(), Location.HERE);
+		//update the location of fish,in which tank id
+		String fishID = fish.getId();
+		if(homeAgent.containsKey(fishID)) {
+			homeAgent.put(fishID, null);
+		} else {
+			this.forwarder.sendNameResolutionRequest(new NameResolutionRequest(fish.getTankId(), fishID));
+		}
+
 	}
 
 	public void receiveToken() {
@@ -180,19 +184,12 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	}
 
 	public void locateFishGlobally(String fishId) {
-		Location fishLocation = fishLocationMap.get(fishId);
-		if(fishLocation == Location.HERE) {
+		if(homeAgent.get(fishId) == null) {
 			locateFishLocally(fishId);
 		} else {
-			if(fishLocation == Location.LEFT) {
-				//send left request
-				forwarder.sendLocationRequest(leftNeighbor, new LocationRequest(fishId));
-			} else {
-				//send right request
-				forwarder.sendLocationRequest(leftNeighbor, new LocationRequest(fishId));
-			}
+			InetSocketAddress currentLocation = homeAgent.get(fishId);
+			forwarder.sendLocationRequest(currentLocation, new LocationRequest(fishId));
 		}
-
 	}
 
 	private void locateFishLocally(String fishId) {
@@ -202,6 +199,14 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 			}
 		}
 
+	}
+
+	public void handleResponse(InetSocketAddress homeLocation, String fishID) {
+		forwarder.sendCurrentLocation(homeLocation, fishID);
+	}
+
+	public void updateCurrentLocation(String fishID, InetSocketAddress currentLocation) {
+		homeAgent.put(fishID, currentLocation);
 	}
 
 	public String getId() {
@@ -233,15 +238,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 					fish.reverse();
 				}
 			}
-
-			if (fish.disappears()) {
-				if(fish.getDirection() == Direction.LEFT) {
-					fishLocationMap.put(fish.getId(), Location.LEFT);
-				}else if(fish.getDirection() == Direction.RIGHT) {
-					fishLocationMap.put(fish.getId(), Location.RIGHT);
-				}
-				it.remove();
-			}
+			it.remove();
 		}
 	}
 
