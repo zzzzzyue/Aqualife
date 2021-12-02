@@ -5,6 +5,7 @@ import java.time.temporal.TemporalAccessor;
 
 import aqua.common.Direction;
 import aqua.common.FishModel;
+import aqua.common.Location;
 import aqua.common.Properties;
 import aqua.common.msgtypes.*;
 import messaging.Endpoint;
@@ -48,6 +49,8 @@ public class ClientCommunicator {
 			endpoint.send(receiver ,snapshotSum);
 		}
 
+		public void sendLocationRequest(InetSocketAddress receiver, LocationRequest locationRequest) {endpoint.send(receiver, locationRequest);}
+
 
 	}
 
@@ -87,6 +90,10 @@ public class ClientCommunicator {
 
 				if (msg.getPayload() instanceof SnapshotSum) {
 					tankModel.receiveSum((SnapshotSum) msg.getPayload());
+				}
+
+				if (msg.getPayload() instanceof LocationRequest) {
+					tankModel.locateFishGlobally(((LocationRequest) msg.getPayload()).getFishId());
 				}
 
 			}
