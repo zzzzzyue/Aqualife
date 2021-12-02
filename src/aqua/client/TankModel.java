@@ -238,7 +238,9 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 					fish.reverse();
 				}
 			}
-			it.remove();
+			if (fish.disappears()) {
+				it.remove();
+			}
 		}
 	}
 
