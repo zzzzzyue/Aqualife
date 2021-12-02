@@ -7,5 +7,5 @@ public class LocationRequest implements Serializable {
 
     public LocationRequest(String fishId) {this.fishId = fishId;}
 
-    public String getFishId() {return this.fishId;}
+    public String getFishId() {return fishId;}
 }
